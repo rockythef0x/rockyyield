@@ -11659,9 +11659,6 @@ end)
 
 -- Full credit to AnthonyIsntHere for this entire function
 SkidFling = function(TargetPlayer)
-	-- Cloneref breaks it and I have no idea why
-	local Players = game:GetService("Players")
-
 	local Character = Players.LocalPlayer.Character
 	local Humanoid = Character and Character:FindFirstChildOfClass("Humanoid")
 	local RootPart = Humanoid and Humanoid.RootPart

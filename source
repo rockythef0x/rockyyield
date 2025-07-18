@@ -2033,7 +2033,7 @@ ViewportTextBox.convert(Cmdbar).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_2).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_3).View.ZIndex = 10
 
-function rcdEnabled()
+rcdEnabled = function()
 	local success, isEnabled = pcall(function()
 		local value, wasHidden = gethidden(workspace, "RejectCharacterDeletions") ~= Enum.RejectCharacterDeletions.Disabled
 		return value
@@ -9661,7 +9661,7 @@ addcmd("undance", {"nodance"}, function(args, speaker)
 end)
 
 addcmd('nolimbs',{'rlimbs'},function(args, speaker)
-	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you') end
+	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
 	if r15(speaker) then
 		for i,v in pairs(speaker.Character:GetChildren()) do
 			if v:IsA("BasePart") and
@@ -9686,7 +9686,7 @@ addcmd('nolimbs',{'rlimbs'},function(args, speaker)
 end)
 
 addcmd('noarms',{'rarms'},function(args, speaker)
-	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you') end
+	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
 	if r15(speaker) then
 		for i,v in pairs(speaker.Character:GetChildren()) do
 			if v:IsA("BasePart") and
@@ -9707,7 +9707,7 @@ addcmd('noarms',{'rarms'},function(args, speaker)
 end)
 
 addcmd('nolegs',{'rlegs'},function(args, speaker)
-	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you') end
+	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
 	if r15(speaker) then
 		for i,v in pairs(speaker.Character:GetChildren()) do
 			if v:IsA("BasePart") and

@@ -7,8 +7,7 @@ pcall(function() getgenv().IY_LOADED = true end)
 if not game:IsLoaded() then game.Loaded:Wait() end
 
 function missing(t, f, fallback)
-	if type(f) == t then return f end
-	return fallback
+	return type(f) == t and f or fallback
 end
 
 cloneref = missing("function", cloneref, function(...) return ... end)
@@ -28,7 +27,9 @@ readfile = missing("function", waxreadfile) and function(file, safe)
 	return waxreadfile(file)
 end
 isfile = missing("function", isfile, readfile and function(file)
-	local success, result = pcall(readfile, file)
+	local success, result = pcall(function()
+		return readfile(file)
+	end)
 	return success and result ~= nil and result ~= ""
 end)
 makefolder = missing("function", makefolder)
@@ -3144,7 +3145,7 @@ if type(binds) ~= "table" then binds = {} end
 
 if type(PluginsTable) == "table" then
     for i = #PluginsTable, 1, -1 do
-        if string.sub(PluginsTable[i], -3) ~= "" then
+        if string.sub(PluginsTable[i], -3) ~= ".iy" then
             table.remove(PluginsTable, i)
         end
     end
@@ -3265,7 +3266,9 @@ function CreateLabel(Name, Text)
 		tl.Name = Name
 		tl.Parent = scroll_2
 		tl.ZIndex = 10
+		tl.RichText = true
 		tl.Text = Time().." - ["..Name.."]: "..Text
+		tl.Text = tl.ContentText
 		tl.Size = UDim2.new(0,322,0,84)
 		tl.BackgroundTransparency = 1
 		tl.BorderSizePixel = 0
@@ -3335,7 +3338,7 @@ function CreateJoinLabel(plr,ID)
 	ImageLabel_3.Image = Players:GetUserThumbnailAsync(ID, Enum.ThumbnailType.AvatarThumbnail, Enum.ThumbnailSize.Size420x420)
 	scroll_3.CanvasSize = UDim2.new(0, 0, 0, listlayout.AbsoluteContentSize.Y)
 	scroll_3.CanvasPosition = Vector2.new(0,scroll_2.CanvasPosition.Y+infoFrame.AbsoluteSize.Y)
-	wait()
+	task.wait(0.01)
 	local user = game:HttpGet("https://users.roblox.com/v1/users/"..ID)
 	local json = HttpService:JSONDecode(user)
 	local date = json["created"]:sub(1,10)
@@ -3343,9 +3346,9 @@ function CreateJoinLabel(plr,ID)
 	info2.Text = string.gsub(info2.Text, "Loading...",splitDates[2].."/"..splitDates[3].."/"..splitDates[1])
 end
 
-IYMouse.KeyDown:Connect(function(Key)
-	if (Key==prefix) then
-		RunService.RenderStepped:Wait()
+UserInputService.InputBegan:Connect(function(input, processed)
+	if input.KeyCode.Value == string.byte(prefix) and not Cmdbar:IsFocused() then
+		RunService.PreRender:Wait()
 		Cmdbar:CaptureFocus()
 		maximizeHolder()
 	end
@@ -3361,7 +3364,7 @@ Holder.MouseLeave:Connect(function()
 	if not Cmdbar:IsFocused() then
 		local reqTime = tick()
 		lastMinimizeReq = reqTime
-		wait(1)
+		task.wait(1)
 		if lastMinimizeReq ~= reqTime then return end
 		if not Cmdbar:IsFocused() then
 			minimizeHolder()
@@ -3971,7 +3974,7 @@ CleanFileName = function(name)
 	return tostring(name):gsub("[*\\?:<>|]+", ""):sub(1, 175)
 end
 
-SaveChatlogs.MouseButton1Down:Connect(function()
+SaveChatlogs.Activated:Connect(function()
 	if writefileExploit() then
 		if #scroll_2:GetChildren() > 0 then
 			notify("Loading",'Hold on a sec')
@@ -4000,7 +4003,7 @@ SaveChatlogs.MouseButton1Down:Connect(function()
 	end
 end)
 
-SaveJoinLogs.MouseButton1Down:Connect(function()
+SaveJoinLogs.Activated:Connect(function()
 	if writefileExploit() then
 		if scroll_3:FindFirstChildOfClass("Frame") then
 			notify("Loading",'Hold on a sec')
@@ -4455,7 +4458,7 @@ function autoComplete(str,curText)
 	end
 	if curText:sub(subPos+1,subPos+1) == "!" then subPos = subPos + 1 end
 	Cmdbar.Text = curText:sub(1,subPos) .. str:sub(1, stop - 1)..' '
-	RunService.RenderStepped:Wait()
+	RunService.PreRender:Wait()
 	Cmdbar.Text = Cmdbar.Text:gsub( '\t', '' )
 	Cmdbar.CursorPosition = #Cmdbar.Text+1--1020
 end
@@ -5792,7 +5795,7 @@ function ESP(plr, logic)
 						espLoopFunc:Disconnect()
 					end
 				end
-				espLoopFunc = RunService.RenderStepped:Connect(espLoop)
+				espLoopFunc = RunService.PreRender:Connect(espLoop)
 			end
 		end
 	end)
@@ -5945,7 +5948,7 @@ function Locate(plr)
 						lcLoopFunc:Disconnect()
 					end
 				end
-				lcLoopFunc = RunService.RenderStepped:Connect(lcLoop)
+				lcLoopFunc = RunService.PreRender:Connect(lcLoop)
 			end
 		end
 	end)
@@ -6287,7 +6290,7 @@ end)
 
 PluginsGUI = PluginEditor.background
 
-function addPlugin(name)
+function addPlugin(name, silent)
 	if name:lower() == 'plugin file name' or name:lower() == 'iy_fe.iy' then
 		notify('Plugin Error','Please enter a valid plugin')
 	else
@@ -6303,7 +6306,7 @@ function addPlugin(name)
 		if file then
 			if not FindInTable(PluginsTable, fileName) then
 				table.insert(PluginsTable, fileName)
-				LoadPlugin(fileName)
+				LoadPlugin(fileName, silent)
 				refreshplugins()
 				pcall(eventEditor.Refresh)
 			else
@@ -8164,12 +8167,13 @@ addcmd('view',{'spectate'},function(args, speaker)
 		end
 		viewing = Players[v]
 		workspace.CurrentCamera.CameraSubject = viewing.Character
-		notify('Spectate','Viewing ' .. Players[v].Name)
+		notify('Spectate','Viewing ' ..viewing.Name)
 		local function viewDiedFunc()
-			repeat wait() until Players[v].Character ~= nil and getRoot(Players[v].Character)
+			if not viewing.Character then viewing.CharacterAdded:Wait() end
 			workspace.CurrentCamera.CameraSubject = viewing.Character
+			task.wait(.01)
 		end
-		viewDied = Players[v].CharacterAdded:Connect(viewDiedFunc)
+		viewDied = viewing.CharacterAdded:Connect(viewDiedFunc)
 		local function viewChangedFunc()
 			workspace.CurrentCamera.CameraSubject = viewing.Character
 		end
@@ -8182,7 +8186,7 @@ addcmd('viewpart',{'viewp'},function(args, speaker)
 	if args[1] then
 		for i,v in pairs(workspace:GetDescendants()) do
 			if v.Name:lower() == getstring(1):lower() and v:IsA("BasePart") then
-				wait(0.1)
+				task.wait(0.1)
 				workspace.CurrentCamera.CameraSubject = v
 			end
 		end
@@ -8191,15 +8195,17 @@ end)
 
 addcmd('unview',{'unspectate'},function(args, speaker)
 	StopFreecam()
-	if viewing ~= nil then
+	if viewing then
 		viewing = nil
 		notify('Spectate','View turned off')
 	end
 	if viewDied then
 		viewDied:Disconnect()
 		viewChanged:Disconnect()
+        viewChanged = nil
 	end
-	workspace.CurrentCamera.CameraSubject = speaker.Character
+
+	workspace.CurrentCamera.CameraSubject = speaker.Character:FindFirstChildOfClass("Humanoid")
 end)
 
 
@@ -9262,7 +9268,7 @@ addcmd("orbit", {}, function(args, speaker)
 				root.CFrame = CFrame.new(getRoot(target.Character).Position) * CFrame.Angles(0, math.rad(rotation), 0) * CFrame.new(distance, 0, 0)
 			end)
 		end)
-		orbit2 = RunService.RenderStepped:Connect(function()
+		orbit2 = RunService.PreRender:Connect(function()
 			pcall(function()
 				root.CFrame = CFrame.new(root.Position, getRoot(target.Character).Position)
 			end)
@@ -9829,11 +9835,11 @@ addcmd('autojump',{'ajump'},function(args, speaker)
 		end
 	end
 	autoJump()
-	HumanModCons.ajLoop = (HumanModCons.ajLoop and HumanModCons.ajLoop:Disconnect() and false) or RunService.RenderStepped:Connect(autoJump)
+	HumanModCons.ajLoop = (HumanModCons.ajLoop and HumanModCons.ajLoop:Disconnect() and false) or RunService.PreRender:Connect(autoJump)
 	HumanModCons.ajCA = (HumanModCons.ajCA and HumanModCons.ajCA:Disconnect() and false) or speaker.CharacterAdded:Connect(function(nChar)
 		Char, Human = nChar, nChar:WaitForChild("Humanoid")
 		autoJump()
-		HumanModCons.ajLoop = (HumanModCons.ajLoop and HumanModCons.ajLoop:Disconnect() and false) or RunService.RenderStepped:Connect(autoJump)
+		HumanModCons.ajLoop = (HumanModCons.ajLoop and HumanModCons.ajLoop:Disconnect() and false) or RunService.PreRender:Connect(autoJump)
 	end)
 end)
 
@@ -9861,11 +9867,11 @@ addcmd('edgejump',{'ejump'},function(args, speaker)
 		end
 	end
 	edgejump()
-	HumanModCons.ejLoop = (HumanModCons.ejLoop and HumanModCons.ejLoop:Disconnect() and false) or RunService.RenderStepped:Connect(edgejump)
+	HumanModCons.ejLoop = (HumanModCons.ejLoop and HumanModCons.ejLoop:Disconnect() and false) or RunService.PreRender:Connect(edgejump)
 	HumanModCons.ejCA = (HumanModCons.ejCA and HumanModCons.ejCA:Disconnect() and false) or speaker.CharacterAdded:Connect(function(nChar)
 		Char, Human = nChar, nChar:WaitForChild("Humanoid")
 		edgejump()
-		HumanModCons.ejLoop = (HumanModCons.ejLoop and HumanModCons.ejLoop:Disconnect() and false) or RunService.RenderStepped:Connect(edgejump)
+		HumanModCons.ejLoop = (HumanModCons.ejLoop and HumanModCons.ejLoop:Disconnect() and false) or RunService.PreRender:Connect(edgejump)
 	end)
 end)
 
@@ -9962,19 +9968,14 @@ addcmd('headthrow',{},function(args, speaker)
 end)
 
 addcmd('animation',{'anim'},function(args, speaker)
-	if not r15(speaker) then
-		local pchar=speaker.Character
-		local AnimationId = tostring(args[1])
-		local Anim = Instance.new("Animation")
-		Anim.AnimationId = "rbxassetid://"..AnimationId
-		local k = pchar:FindFirstChildOfClass('Humanoid'):LoadAnimation(Anim)
-		k:Play()
-		if args[2] then
-			k:AdjustSpeed(tostring(args[2]))
-		end
-	else
-		notify('R6 Required','This command requires the r6 rig type')
-	end
+	local hum = speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid")
+	local animator = hum and hum:FindFirstChildOfClass("Animator")
+	if not animator then return end
+	local AnimationId = tostring(args[1])
+	local Anim = Instance.new("Animation")
+	Anim.AnimationId = "rbxassetid://"..AnimationId
+	local track = animator:LoadAnimation(Anim)
+	track:Play(nil, nil, tonumber(args[2]))
 end)
 
 addcmd('noanim',{},function(args, speaker)
@@ -12356,6 +12357,7 @@ addcmd("staffwatch", {}, function(args, speaker)
 	if staffwatchjoin then
 		staffwatchjoin:Disconnect()
 	end
+
 	if game.CreatorType == Enum.CreatorType.Group then
 		local found = {}
 		staffwatchjoin = Players.PlayerAdded:Connect(function(player)
@@ -12424,7 +12426,6 @@ addcmd("unantivoid", {"noantivoid"}, function(args, speaker)
 	if args[1] ~= "nonotify" then notify("antivoid", "Disabled") end
 end)
 
-antivoidWasEnabled = false
 addcmd("fakeout", {}, function(args, speaker)
 	local root = getRoot(speaker.Character)
 	local oldpos = root.CFrame
@@ -12439,7 +12440,7 @@ addcmd("fakeout", {}, function(args, speaker)
 	workspace.FallenPartsDestroyHeight = OrgDestroyHeight
 	if antivoidWasEnabled then
 		execCmd("antivoid nonotify")
-		antivoidWasEnabled = false
+		antivoidWasEnabled = nil
 	end
 end)
 
@@ -12842,17 +12843,21 @@ addcmd("addallplugins", {"loadallplugins"}, function(args, speaker)
 		return
 	end
 
-	for _, filePath in ipairs(listfiles("")) do
-		local fileName = filePath:match("([^/\\]+%.iy)$")
-
-		if fileName and
-			fileName:lower() ~= "iy_fe.iy" and
-			not isfolder(fileName) and
-			not table.find(PluginsTable, fileName)
-		then
-			addPlugin(fileName)
+	local function addPlugins(folder)
+		for _, file in ipairs(listfiles(folder)) do
+			if not isfolder(file) then
+				if file:sub(-3) == ".iy" and file:lower() ~= "iy_fe.iy" and not table.find(PluginsTable, file) then
+					addPlugin(file, true)
+					task.wait(.01)
+				end
+			else
+				addPlugins(file)
+			end
 		end
 	end
+
+	addPlugins("")
+	notify("Added Plugins", "Added all plugins from workspace.")
 end)
 
 addcmd('removecmd',{'deletecmd'},function(args, speaker)
@@ -12964,16 +12969,25 @@ end
 
 Players.PlayerAdded:Connect(function(plr)
 	eventEditor.FireEvent("OnJoin",plr.Name)
-	if isLegacyChat then plr.Chatted:Connect(function(msg) eventEditor.FireEvent("OnChatted",tostring(plr),msg) end) end
-	plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
+	if isLegacyChat then
+		plr.Chatted:Connect(function(msg)
+			eventEditor.FireEvent("OnChatted", plr.Name, msg)
+		end)
+	end
+
+	plr.CharacterAdded:Connect(function()
+		eventEditor.FireEvent("OnSpawn", plr.Name)
+		hookCharEvents(plr)
+	end)
 	JoinLog(plr)
+
 	if isLegacyChat then ChatLog(plr) end
 	if ESPenabled then
-		repeat wait(1) until plr.Character and getRoot(plr.Character)
+		repeat task.wait(1) until plr.Character and getRoot(plr.Character)
 		ESP(plr)
 	end
 	if CHMSenabled then
-		repeat wait(1) until plr.Character and getRoot(plr.Character)
+		repeat task.wait(1) until plr.Character and getRoot(plr.Character)
 		CHMS(plr)
 	end
 end)
@@ -12998,7 +13012,10 @@ end
 
 for _,plr in pairs(Players:GetPlayers()) do
 	pcall(function()
-		plr.CharacterAdded:Connect(function() eventEditor.FireEvent("OnSpawn",tostring(plr)) hookCharEvents(plr) end)
+		plr.CharacterAdded:Connect(function()
+			eventEditor.FireEvent("OnSpawn", plr.Name)
+			hookCharEvents(plr)
+		end)
 		hookCharEvents(plr)
 	end)
 end

@@ -8791,7 +8791,7 @@ addcmd('nofavorite', {'nopromptfav'}, function(args, speaker)
 	-- If it gets detected use Adonis bypass real
 	if hookmetamethod then
 		local oldName; oldName = hookmetamethod(game, "__namecall", function(self, ...)
-			if self.ClassName = "AvatarEditorService" and getnamecallmethod():lower() == 'promptsetfavorite' then
+			if self.ClassName == "AvatarEditorService" and getnamecallmethod():lower() == 'promptsetfavorite' then
 				return
 			end
 

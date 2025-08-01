@@ -4488,7 +4488,7 @@ CMDs[#CMDs + 1] = {NAME = 'copycreatorid / copycreator', DESC = 'Copies the crea
 CMDs[#CMDs + 1] = {NAME = 'setcreatorid / setcreator', DESC = 'Sets your userid to the creators ID'}
 CMDs[#CMDs + 1] = {NAME = 'noprompts', DESC = 'Prevents the game from showing you purchase/premium prompts'}
 CMDs[#CMDs + 1] = {NAME = 'showprompts', DESC = 'Allows the game to show purchase/premium prompts again'}
-CMDs[#CMDs + 1] = {NAME = ' / nopromptfav', DESC = 'Prevents the game from prompting you to favorite it (Detectable in some games)'}
+CMDs[#CMDs + 1] = {NAME = 'nofavorite / nopromptfav', DESC = 'Prevents the game from prompting you to favorite it (Detectable in some games)'}
 CMDs[#CMDs + 1] = {NAME = 'enable [inventory/playerlist/chat/reset/emotes/all]', DESC = 'Toggles visibility of coregui items'}
 CMDs[#CMDs + 1] = {NAME = 'disable [inventory/playerlist/chat/reset/emotes/all]', DESC = 'Toggles visibility of coregui items'}
 CMDs[#CMDs + 1] = {NAME = 'showguis', DESC = 'Shows any invisible GUIs'}
@@ -4871,6 +4871,7 @@ CMDs[#CMDs + 1] = {NAME = 'notifyping / ping', DESC = 'Notify yourself your ping
 CMDs[#CMDs + 1] = {NAME = 'trip', DESC = 'Makes your character fall over'}
 CMDs[#CMDs + 1] = {NAME = 'norender', DESC = 'Disable 3d Rendering to decrease the amount of CPU the client uses'}
 CMDs[#CMDs + 1] = {NAME = 'render', DESC = 'Enable 3d Rendering'}
+CMDs[#CMDs + 1] = {NAME = 'setfpscap / fpscap [limit]', DESC = 'Limits your FPS to the provided amount (Default = 60)'}
 CMDs[#CMDs + 1] = {NAME = 'use2022materials / 2022materials', DESC = 'Enables 2022 material textures'}
 CMDs[#CMDs + 1] = {NAME = 'unuse2022materials / un2022materials', DESC = 'Disables 2022 material textures'}
 CMDs[#CMDs + 1] = {NAME = 'promptr6', DESC = 'Prompts the game to switch your rig type to R6'}
@@ -5002,27 +5003,31 @@ local refreshCmd = false
 function refresh(plr)
 	refreshCmd = true
 	local root = plr.Character:WaitForChild("HumanoidRootPart")
-	local pos = root.CFrame
-	local pos1 = workspace.CurrentCamera.CFrame
-	respawn(plr)
-	task.spawn(function()
-		plr.CharacterAdded:Wait():WaitForChild("HumanoidRootPart").CFrame, workspace.CurrentCamera.CFrame = pos, task.wait() and pos1
+	local pos = root and root.CFrame
+	local pos1 = workspace.CurrentCamera and workspace.CurrentCamera.CFrame
+
+	plr.CharacterAdded:Once(function(char)
+		if pos then char:WaitForChild("HumanoidRootPart").CFrame = pos end
+		task.wait(.1)
+		if workspace.CurrentCamera and pos1 then workspace.CurrentCamera.CFrame = pos1 end
 		refreshCmd = false
 	end)
+	respawn(plr)
 end
 
 local lastDeath
 
 function onDied()
 	task.spawn(function()
-		if pcall(function() Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') end) and Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid') then
-			Players.LocalPlayer.Character:FindFirstChildOfClass('Humanoid').Died:Connect(function()
+		local humanoid = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Died:Connect(function()
 				if getRoot(Players.LocalPlayer.Character) then
 					lastDeath = getRoot(Players.LocalPlayer.Character).CFrame
 				end
 			end)
 		else
-			wait(2)
+			task.wait(2)
 			onDied()
 		end
 	end)
@@ -5034,18 +5039,13 @@ Players.LocalPlayer.CharacterAdded:Connect(function()
 	NOFLY()
 	Floating = false
 
-	if not Clip then
-		execCmd('clip')
+	if not Clip then execCmd('clip') end
+
+	repeat task.wait() until getRoot(Players.LocalPlayer.Character)
+	if spawnpoint and not refreshCmd and spawnpos ~= nil and getRoot(Players.LocalPlayer.Character) then
+		task.wait(spDelay)
+		getRoot(Players.LocalPlayer.Character).CFrame = spawnpos
 	end
-
-	repeat wait() until getRoot(Players.LocalPlayer.Character)
-
-	pcall(function()
-		if spawnpoint and not refreshCmd and spawnpos ~= nil then
-			wait(spDelay)
-			getRoot(Players.LocalPlayer.Character).CFrame = spawnpos
-		end
-	end)
 
 	onDied()
 end)

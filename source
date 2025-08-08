@@ -1491,7 +1491,7 @@ About.Position = UDim2.new(0, 17, 0, 10)
 About.Size = UDim2.new(0, 187, 0, 49)
 About.Font = Enum.Font.SourceSans
 About.TextSize = 14
-About.Text = "Plugins are  files and should be located in the 'workspace' folder of your exploit."
+About.Text = "Plugins are files and should be located in the 'workspace' folder of your exploit."
 About.TextColor3 = Color3.fromRGB(255, 255, 255)
 About.TextWrapped = true
 About.TextYAlignment = Enum.TextYAlignment.Top
@@ -3144,11 +3144,11 @@ end
 if type(binds) ~= "table" then binds = {} end
 
 if type(PluginsTable) == "table" then
-    for i = #PluginsTable, 1, -1 do
-        if string.sub(PluginsTable[i], -3) ~= ".iy" then
-            table.remove(PluginsTable, i)
-        end
-    end
+	for i = #PluginsTable, 1, -1 do
+		if string.sub(PluginsTable[i], -3) ~= ".iy" then
+			table.remove(PluginsTable, i)
+		end
+	end
 end
 
 function Time()
@@ -7020,11 +7020,6 @@ iyflyspeed = 1
 vehicleflyspeed = 1
 local newcamCon
 function sFLY(vfly)
-	local camera = workspace.CurrentCamera
-	newcamCon = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-		camera = workspace.CurrentCamera
-	end)
-	
 	local plr = Players.LocalPlayer
 	local char = plr.Character or plr.CharacterAdded:Wait()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -7056,6 +7051,7 @@ function sFLY(vfly)
 		BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 		task.spawn(function()
 			repeat task.wait()
+				local camera = workspace.CurrentCamera
 				if not vfly and humanoid then
 					humanoid.PlatformStand = true
 				end
@@ -7313,7 +7309,8 @@ addcmd('cframefly', {'cfly'}, function(args, speaker)
 	CFloop = RunService.Heartbeat:Connect(function(deltaTime)
 		local moveDirection = speaker.Character:FindFirstChildOfClass('Humanoid').MoveDirection * (CFspeed * deltaTime)
 		local headCFrame = Head.CFrame
-		local cameraCFrame = workspace.CurrentCamera.CFrame
+		local camera = workspace.CurrentCamera
+		local cameraCFrame = camera.CFrame
 		local cameraOffset = headCFrame:ToObjectSpace(cameraCFrame).Position
 		cameraCFrame = cameraCFrame * CFrame.new(-cameraOffset.X, -cameraOffset.Y, -cameraOffset.Z + 1)
 		local cameraPosition = cameraCFrame.Position
@@ -7327,9 +7324,9 @@ end)
 addcmd('uncframefly',{'uncfly'},function(args, speaker)
 	if CFloop then
 		CFloop:Disconnect()
+		CFloop = nil
 		speaker.Character:FindFirstChildOfClass('Humanoid').PlatformStand = false
-		local Head = speaker.Character:WaitForChild("Head")
-		Head.Anchored = false
+		speaker.Character.Head.Anchored = false
 	end
 end)
 
@@ -7840,13 +7837,13 @@ addcmd('inspect', {'examine'}, function(args, speaker)
 end)
 
 addcmd("savegame", {"saveplace"}, function(args, speaker)
-    if saveinstance then
-        notify("Loading", "Downloading game. This will take a while")
-        saveinstance()
-        notify("Game Saved", "Saved place to the workspace folder within your exploit folder.")
-    else
-        notify("Incompatible Exploit", "Your exploit does not support this command (missing saveinstance)")
-    end
+	if saveinstance then
+		notify("Loading", "Downloading game. This will take a while")
+		saveinstance()
+		notify("Game Saved", "Saved place to the workspace folder within your exploit folder.")
+	else
+		notify("Incompatible Exploit", "Your exploit does not support this command (missing saveinstance)")
+	end
 end)
 
 addcmd('clearerror',{'clearerrors'},function(args, speaker)
@@ -8217,7 +8214,7 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 	if viewDied then
 		viewDied:Disconnect()
 		viewChanged:Disconnect()
-        viewChanged = nil
+		viewChanged = nil
 	end
 
 	workspace.CurrentCamera.CameraSubject = speaker.Character:FindFirstChildOfClass("Humanoid")
@@ -11926,14 +11923,14 @@ addcmd("togglewalkfling", {}, function(args, speaker)
 end)
 
 addcmd('invisfling',{},function(args, speaker)
-    local bindable = Instance.new("BindableEvent")
-    bindable.Event:Connect(function()
-        execCmd('reset')
-        StarterGui:SetCore("ResetButtonCallback", true)
-        bindable:Destroy()
-    end)
+	local bindable = Instance.new("BindableEvent")
+	bindable.Event:Connect(function()
+		execCmd('reset')
+		StarterGui:SetCore("ResetButtonCallback", true)
+		bindable:Destroy()
+	end)
 
-    StarterGui:SetCore("ResetButtonCallback", bindable)
+	StarterGui:SetCore("ResetButtonCallback", bindable)
 	local ch = speaker.Character
 	ch:FindFirstChildWhichIsA("Humanoid"):SetStateEnabled(Enum.HumanoidStateType.Dead, false)
 	local prt=Instance.new("Model")

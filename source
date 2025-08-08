@@ -8211,8 +8211,13 @@ addcmd('unview',{'unspectate'},function(args, speaker)
 		viewing = nil
 		notify('Spectate','View turned off')
 	end
+
 	if viewDied then
 		viewDied:Disconnect()
+		viewDied = nil
+	end
+
+	if viewChanged then
 		viewChanged:Disconnect()
 		viewChanged = nil
 	end

@@ -7018,7 +7018,13 @@ FLYING = false
 QEfly = true
 iyflyspeed = 1
 vehicleflyspeed = 1
+local newcamCon
 function sFLY(vfly)
+	local camera = workspace.CurrentCamera
+	newcamCon = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		camera = workspace.CurrentCamera
+	end)
+	
 	local plr = Players.LocalPlayer
 	local char = plr.Character or plr.CharacterAdded:Wait()
 	local humanoid = char:FindFirstChildOfClass("Humanoid")
@@ -7060,14 +7066,14 @@ function sFLY(vfly)
 					SPEED = 0
 				end
 				if (CONTROL.L + CONTROL.R) ~= 0 or (CONTROL.F + CONTROL.B) ~= 0 or (CONTROL.Q + CONTROL.E) ~= 0 then
-					BV.Velocity = ((workspace.CurrentCamera.CFrame.LookVector * (CONTROL.F + CONTROL.B)) + ((workspace.CurrentCamera.CFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.F + CONTROL.B + CONTROL.Q + CONTROL.E) * 0.2, 0).p) - workspace.CurrentCamera.CFrame.p)) * SPEED
+					BV.Velocity = ((camera.CFrame.LookVector * (CONTROL.F + CONTROL.B)) + ((camera.CFrame * CFrame.new(CONTROL.L + CONTROL.R, (CONTROL.F + CONTROL.B + CONTROL.Q + CONTROL.E) * 0.2, 0).p) - camera.CFrame.p)) * SPEED
 					lCONTROL = {F = CONTROL.F, B = CONTROL.B, L = CONTROL.L, R = CONTROL.R}
 				elseif (CONTROL.L + CONTROL.R) == 0 and (CONTROL.F + CONTROL.B) == 0 and (CONTROL.Q + CONTROL.E) == 0 and SPEED ~= 0 then
-					BV.Velocity = ((workspace.CurrentCamera.CFrame.LookVector * (lCONTROL.F + lCONTROL.B)) + ((workspace.CurrentCamera.CFrame * CFrame.new(lCONTROL.L + lCONTROL.R, (lCONTROL.F + lCONTROL.B + CONTROL.Q + CONTROL.E) * 0.2, 0).p) - workspace.CurrentCamera.CFrame.p)) * SPEED
+					BV.Velocity = ((camera.CFrame.LookVector * (lCONTROL.F + lCONTROL.B)) + ((camera.CFrame * CFrame.new(lCONTROL.L + lCONTROL.R, (lCONTROL.F + lCONTROL.B + CONTROL.Q + CONTROL.E) * 0.2, 0).p) - camera.CFrame.p)) * SPEED
 				else
 					BV.Velocity = Vector3.new(0, 0, 0)
 				end
-				BG.CFrame = workspace.CurrentCamera.CFrame
+				BG.CFrame = camera.CFrame
 			until not FLYING
 			CONTROL = {F = 0, B = 0, L = 0, R = 0, Q = 0, E = 0}
 			lCONTROL = {F = 0, B = 0, L = 0, R = 0, Q = 0, E = 0}
@@ -7093,7 +7099,7 @@ function sFLY(vfly)
 		elseif input.KeyCode == Enum.KeyCode.Q then
 			CONTROL.E = -(vfly and vehicleflyspeed or iyflyspeed)*2
 		end
-		pcall(function() workspace.CurrentCamera.CameraType = Enum.CameraType.Track end)
+		pcall(function() camera.CameraType = Enum.CameraType.Track end)
 	end)
 
 	flyKeyUp = UserInputService.InputEnded:Connect(function(input, processed)
@@ -7153,6 +7159,10 @@ function NOFLY()
 
 	if humanoid then humanoid.PlatformStand = false end
 	if workspace.CurrentCamera then workspace.CurrentCamera.CameraType = Enum.CameraType.Custom end
+	if newcamCon then
+		newcamCon:Disconnect()
+		newcamCon = nil
+	end
 end
 
 function mobilefly(speaker, vfly)
@@ -8168,14 +8178,19 @@ addcmd('view',{'spectate'},function(args, speaker)
 		viewing = Players[v]
 		workspace.CurrentCamera.CameraSubject = viewing.Character
 		notify('Spectate','Viewing ' ..viewing.Name)
+		local debounce = false
 		local function viewDiedFunc()
 			if not viewing.Character then viewing.CharacterAdded:Wait() end
 			workspace.CurrentCamera.CameraSubject = viewing.Character
-			task.wait(.01)
 		end
+		
 		viewDied = viewing.CharacterAdded:Connect(viewDiedFunc)
 		local function viewChangedFunc()
+			if debounce then return end
+			debounce = true
 			workspace.CurrentCamera.CameraSubject = viewing.Character
+			task.wait(.1)
+			debounce = false
 		end
 		viewChanged = workspace.CurrentCamera:GetPropertyChangedSignal("CameraSubject"):Connect(viewChangedFunc)
 	end
@@ -8788,19 +8803,10 @@ addcmd("showprompts", {"showpurchaseprompts"}, function(args, speaker)
 end)
 
 addcmd('nofavorite', {'nopromptfav'}, function(args, speaker)
-	-- If it gets detected use Adonis bypass real
-	if hookmetamethod then
-		local oldName; oldName = hookmetamethod(game, "__namecall", function(self, ...)
-			if self.ClassName == "AvatarEditorService" and getnamecallmethod():lower() == 'promptsetfavorite' then
-				return
-			end
+	COREGUI.AvatarEditorPromptsApp.Children.Enabled = false
 
-			return oldName(self, ...)
-		end)
-
-		if args[1] ~= 'nonotify' then
-			notify('Blocked', 'Blocked game from sending favorite requests')
-		end
+	if args[1] ~= 'nonotify' then
+		notify('Blocked', 'Blocked game from sending favorite requests')
 	end
 end)
 
@@ -8929,29 +8935,32 @@ addcmd('copycreatorid',{'copycreator'},function(args, speaker)
 end)
 
 addcmd('setcreatorid',{'setcreator'},function(args, speaker)
-	if game.CreatorType == Enum.CreatorType.User then
-		speaker.UserId = game.CreatorId
-		notify('Set ID','Set UserId to '..game.CreatorId)
-	elseif game.CreatorType == Enum.CreatorType.Group then
-		local OwnerID = GroupService:GetGroupInfoAsync(game.CreatorId).Owner.Id
-		speaker.UserId = OwnerID
-		notify('Set ID','Set UserId to '..OwnerID)
+	local targetId = game.CreatorType == Enum.CreatorType.User and game.CreatorId or GroupService:GetGroupInfoAsync(game.CreatorId).Owner.Id
+	local targetName = Players:GetNameFromUserIdAsync(targetId)
+
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+	local success, err = pcall(function() speaker.UserId = targetId end)
+
+	if not success then
+		Players:SetLocalPlayerInfo(targetId, speaker.Name, speaker.DisplayName, Enum.MembershipType.None, false)
 	end
+	task.wait(.5)
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
+
+	notify('Set ID','Set UserId to '..targetId)
 end)
 
 addcmd('appearanceid',{'aid'},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
-	for i,v in pairs(players) do
-		local aid = tostring(Players[v].CharacterAppearanceId)
-		notify('Appearance ID',aid)
+	for i,v in pairs(players) do 
+		notify('Appearance ID', tostring(Players[v].CharacterAppearanceId))
 	end
 end)
 
 addcmd('copyappearanceid',{'caid'},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
 	for i,v in pairs(players) do
-		local aid = tostring(Players[v].CharacterAppearanceId)
-		toClipboard(aid)
+		toClipboard(Players[v].CharacterAppearanceId)
 	end
 end)
 

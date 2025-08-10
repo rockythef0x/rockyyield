@@ -11976,7 +11976,7 @@ addcmd('invisfling',{},function(args, speaker)
 			invisflingStepped:Disconnect()
 		end
 	end)
-	sFLY()
+	execCmd('fly')
 	workspace.CurrentCamera.CameraSubject = root
 	local bambam = Instance.new("BodyThrust")
 	bambam.Parent = getRoot(speaker.Character)

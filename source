@@ -271,7 +271,6 @@ function randomString()
 	return table.concat(array)
 end
 
-PARENT = nil
 if get_hidden_gui or gethui then
 	local hiddenUI = get_hidden_gui or gethui
 	local Main = Instance.new("ScreenGui")
@@ -2039,7 +2038,7 @@ function isRcdEnabled()
 		local value, wasHidden = gethidden(workspace, "RejectCharacterDeletions") ~= Enum.RejectCharacterDeletions.Disabled
 		return value
 	end)
-	return success and isEnabled or false
+	return success and isEnabled
 end
 
 function vtype(o, t)
@@ -3346,8 +3345,8 @@ function CreateJoinLabel(plr,ID)
 	info2.Text = string.gsub(info2.Text, "Loading...",splitDates[2].."/"..splitDates[3].."/"..splitDates[1])
 end
 
-UserInputService.InputBegan:Connect(function(input, processed)
-	if input.KeyCode.Value == string.byte(prefix) and not Cmdbar:IsFocused() then
+IYMouse.KeyDown:Connect(function(Key)
+	if (Key == prefix) then
 		RunService.PreRender:Wait()
 		Cmdbar:CaptureFocus()
 		maximizeHolder()
@@ -5035,21 +5034,18 @@ end
 
 Clip = true
 spDelay = 0.1
-Players.LocalPlayer.CharacterAdded:Connect(function()
-	NOFLY()
+Players.LocalPlayer.CharacterAdded:Connect(function(char)
+	execCmd('unfly')
 	Floating = false
 
 	if not Clip then execCmd('clip') end
-
-	repeat task.wait() until getRoot(Players.LocalPlayer.Character)
-	if spawnpoint and not refreshCmd and spawnpos ~= nil and getRoot(Players.LocalPlayer.Character) then
+	if spawnpoint and not refreshCmd and spawnpos then
 		task.wait(spDelay)
-		getRoot(Players.LocalPlayer.Character).CFrame = spawnpos
+		char:WaitForChild("HumanoidRootPart").CFrame = spawnpos
 	end
 
 	onDied()
 end)
-
 onDied()
 
 function getstring(begin)
@@ -5066,7 +5062,7 @@ function getstring(begin)
 	return AA
 end
 
-findCmd=function(cmd_name)
+function findCmd(cmd_name)
 	for i,v in pairs(cmds)do
 		if v.NAME:lower()==cmd_name:lower() or FindInTable(v.ALIAS,cmd_name:lower()) then
 			return v
@@ -10487,35 +10483,30 @@ addcmd('audiologger',{'alogger'},function(args, speaker)
 	loadstring(game:HttpGet(('https://raw.githubusercontent.com/infyiff/backup/main/audiologger.lua'),true))()
 end)
 
-local loopgoto = nil
+local loopgoto
 addcmd('loopgoto',{},function(args, speaker)
 	local players = getPlayer(args[1], speaker)
-	for i,v in pairs(players)do
-		loopgoto = nil
-		if speaker.Character:FindFirstChildOfClass('Humanoid') and speaker.Character:FindFirstChildOfClass('Humanoid').SeatPart then
-			speaker.Character:FindFirstChildOfClass('Humanoid').Sit = false
-			wait(.1)
-		end
+	local distance = tonumber(args[2]) or 3
+	local lDelay = tonumber(args[3]) or 0
+	
+	execCmd('nosit')
+	for i,v in pairs(players) do
 		loopgoto = Players[v]
-		local distance = 3
-		if args[2] and isNumber(args[2]) then
-			distance = args[2]
-		end
-		local lDelay = 0
-		if args[3] and isNumber(args[3]) then
-			lDelay = args[3]
-		end
 		repeat
-			if Players:FindFirstChild(v) then
-				if Players[v].Character ~= nil then
-					getRoot(speaker.Character).CFrame = getRoot(Players[v].Character).CFrame + Vector3.new(distance,1,0)
+			if Players:FindFirstChild(v) and speaker.Character and Players[v].Character then
+				local root = speaker.Character:FindFirstChild("HumanoidRootPart")
+				local troot = Players[v].Character:FindFirstChild("HumanoidRootPart")
+
+				if root and troot then
+					root.CFrame = troot.CFrame + Vector3.new(distance, 1, 0)
 				end
-				wait(lDelay)
+				task.wait(lDelay)
 			else
 				loopgoto = nil
 			end
 		until loopgoto ~= Players[v]
 	end
+	execCmd('unnosit')
 end)
 
 addcmd('unloopgoto',{'noloopgoto'},function(args, speaker)
@@ -10523,23 +10514,28 @@ addcmd('unloopgoto',{'noloopgoto'},function(args, speaker)
 end)
 
 addcmd('headsit',{},function(args, speaker)
-	local players = getPlayer(args[1], speaker)
-	if headSit then headSit:Disconnect() end
-	for i,v in pairs(players)do
-		speaker.Character:FindFirstChildOfClass('Humanoid').Sit = true
-		headSit = RunService.Heartbeat:Connect(function()
-			if Players:FindFirstChild(Players[v].Name) and Players[v].Character ~= nil and getRoot(Players[v].Character) and getRoot(speaker.Character) and speaker.Character:FindFirstChildOfClass('Humanoid').Sit == true then
-				getRoot(speaker.Character).CFrame = getRoot(Players[v].Character).CFrame * CFrame.Angles(0,math.rad(0),0)* CFrame.new(0,1.6,0.4)
-			else
-				headSit:Disconnect()
-			end
-		end)
+	local player = Players[getPlayer(args[1], speaker)[1]]
+	
+	if headSit then
+		headSit:Disconnect()
+		headSit = nil
 	end
+
+	headSit = RunService.Heartbeat:Connect(function()
+		local plr = Players:FindFirstChild(v)
+		local hum = speaker.Character and speaker.Character:FindFirstChildOfClass("Humanoid")
+		local troot = plr and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+		if hum and hum.RootPart and troot then
+			hum.Sit = true
+			hum.RootPart.CFrame = troot.CFrame * CFrame.Angles(0, math.rad(0), 0) * CFrame.new(0, 1.6, 0.4)
+		else
+			headSit:Disconnect()
+		end
+	end)
 end)
 
 addcmd('chat',{'say'},function(args, speaker)
-	local cString = getstring(1)
-	chatMessage(cString)
+	chatMessage(getstring(1))
 end)
 
 spamming = false
@@ -10547,7 +10543,8 @@ spamspeed = 1
 addcmd('spam',{},function(args, speaker)
 	spamming = true
 	local spamstring = getstring(1)
-	repeat task.wait(spamspeed)
+	repeat
+		task.wait(spamspeed)
 		chatMessage(spamstring)
 	until spamming == false
 end)
@@ -10603,10 +10600,8 @@ addcmd('nopmspam',{'unpmspam'},function(args, speaker)
 end)
 
 addcmd('spamspeed',{},function(args, speaker)
-	local speed = args[1] or 1
-	if isNumber(speed) then
-		spamspeed = speed
-	end
+	local speed = tonumber(args[1]) or 1
+	if speed then spamspeed = speed end
 end)
 
 addcmd('bubblechat',{},function(args, speaker)
@@ -10661,7 +10656,7 @@ addcmd('creeper',{},function(args, speaker)
 end)
 
 function getTorso(x)
-	x = x or Players.LocalPlayer.Character
+	local x = x or Players.LocalPlayer.Character
 	return x:FindFirstChild("Torso") or x:FindFirstChild("UpperTorso") or x:FindFirstChild("LowerTorso") or x:FindFirstChild("HumanoidRootPart")
 end
 

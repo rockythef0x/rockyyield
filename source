@@ -2034,7 +2034,7 @@ ViewportTextBox.convert(Cmdbar).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_2).View.ZIndex = 10
 ViewportTextBox.convert(Cmdbar_3).View.ZIndex = 10
 
-rcdEnabled = function()
+function isRcdEnabled()
 	local success, isEnabled = pcall(function()
 		local value, wasHidden = gethidden(workspace, "RejectCharacterDeletions") ~= Enum.RejectCharacterDeletions.Disabled
 		return value
@@ -4979,11 +4979,11 @@ end
 function respawn(plr)
 	if invisRunning then TurnVisible() end
 
-	if rcdEnabled() and replicatesignal then
+	if isRcdEnabled() and replicatesignal then
 		replicatesignal(plr.ConnectDiedSignalBackend)
 		task.wait(Players.RespawnTime - 0.1)
 		replicatesignal(plr.Kill)
-	elseif rcdEnabled() and not replicatesignal then
+	elseif isRcdEnabled() and not replicatesignal then
 		notify("Incompatible Exploit", "Your exploit does not support this command (missing replicatesignal)")
 	else
 		local char = plr.Character
@@ -9686,7 +9686,7 @@ addcmd("undance", {"nodance"}, function(args, speaker)
 end)
 
 addcmd('nolimbs',{'rlimbs'},function(args, speaker)
-	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
+	if isRcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
 	if r15(speaker) then
 		for i,v in pairs(speaker.Character:GetChildren()) do
 			if v:IsA("BasePart") and
@@ -9711,7 +9711,7 @@ addcmd('nolimbs',{'rlimbs'},function(args, speaker)
 end)
 
 addcmd('noarms',{'rarms'},function(args, speaker)
-	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
+	if isRcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
 	if r15(speaker) then
 		for i,v in pairs(speaker.Character:GetChildren()) do
 			if v:IsA("BasePart") and
@@ -9732,7 +9732,7 @@ addcmd('noarms',{'rarms'},function(args, speaker)
 end)
 
 addcmd('nolegs',{'rlegs'},function(args, speaker)
-	if rcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
+	if isRcdEnabled() then notify('RejectCharacterDeletions', 'Due to RejectCharacterDeletions being enabled in this game, this command will only be visible to you', 3) end
 	if r15(speaker) then
 		for i,v in pairs(speaker.Character:GetChildren()) do
 			if v:IsA("BasePart") and
@@ -11158,7 +11158,7 @@ addcmd('clearhats',{'cleanhats'},function(args, speaker)
 end)
 
 addcmd('split',{},function(args, speaker)
-	if rcdEnabled() then notify('Clientsided', 'This command is only visible on your screen due to an update by ROBLOX!') end
+	if isRcdEnabled() then notify('Clientsided', 'This command is only visible on your screen due to an update by ROBLOX!') end
 	if r15(speaker) then
 		speaker.Character.UpperTorso.Waist:Destroy()
 	else
@@ -11237,7 +11237,7 @@ local function GetHandleTools(p)
 end
 
 addcmd('dupetools', {'clonetools'}, function(args, speaker)
-	if rcdEnabled() then return notify('RejectCharacterDeletions', 'RejectCharacterDeletions is enabled, this command will not work in this game.') end
+	if isRcdEnabled() then return notify('RejectCharacterDeletions', 'RejectCharacterDeletions is enabled, this command will not work in this game.') end
 	
 	local LOOP_NUM = tonumber(args[1]) or 1
 	local OrigPos = speaker.Character.HumanoidRootPart.Position

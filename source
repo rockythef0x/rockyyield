@@ -7086,9 +7086,9 @@ function sFLY(vfly)
 			CONTROL.L = - (vfly and vehicleflyspeed or iyflyspeed)
 		elseif input.KeyCode == Enum.KeyCode.D then
 			CONTROL.R = (vfly and vehicleflyspeed or iyflyspeed)
-		elseif input.KeyCode == Enum.KeyCode.E then
+		elseif input.KeyCode == Enum.KeyCode.E and QEfly then
 			CONTROL.Q = (vfly and vehicleflyspeed or iyflyspeed)*2
-		elseif input.KeyCode == Enum.KeyCode.Q then
+		elseif input.KeyCode == Enum.KeyCode.Q and QEfly then
 			CONTROL.E = -(vfly and vehicleflyspeed or iyflyspeed)*2
 		end
 		pcall(function() camera.CameraType = Enum.CameraType.Track end)
@@ -7280,19 +7280,14 @@ addcmd('vflyspeed',{'vflysp','vehicleflyspeed','vehicleflysp'},function(args, sp
 end)
 
 addcmd('qefly',{'flyqe'},function(args, speaker)
-	if args[1] == 'false' then
-		QEfly = false
-	else
-		QEfly = true
-	end
+	local arg = tostring(args[1]):lower()
+
+	if not args[1] then QEfly = not QEfly; return end
+	if arg then QEfly = (arg == nil and not QEfly) or (arg == 'true' and true) or (arg == 'false' and false) end
 end)
 
 addcmd('togglefly',{},function(args, speaker)
-	if FLYING then
-		if not IsOnMobile then NOFLY() else unmobilefly(speaker) end
-	else
-		if not IsOnMobile then sFLY() else mobilefly(speaker) end
-	end
+	execCmd(FLYING and 'unfly' or 'fly')
 end)
 
 CFspeed = 50
@@ -7327,9 +7322,12 @@ addcmd('uncframefly',{'uncfly'},function(args, speaker)
 end)
 
 addcmd('cframeflyspeed',{'cflyspeed'},function(args, speaker)
-	if isNumber(args[1]) then
-		CFspeed = args[1]
-	end
+	local speed = tonumber(args[1])
+	if speed then CFspeed = speed end
+end)
+
+addcmd('togglecfly',{},function(args, speaker)
+	execCmd(CFloop and 'uncframefly' or 'cframefly')
 end)
 
 Floating = false
@@ -7846,69 +7844,63 @@ addcmd('clearerror',{'clearerrors'},function(args, speaker)
 	GuiService:ClearError()
 end)
 
-addcmd('clientantikick',{'antikick'},function(args, speaker)
-	if not hookmetamethod then 
-		return notify('Incompatible Exploit','Your exploit does not support this command (missing hookmetamethod)')
-	end
-	local LocalPlayer = Players.LocalPlayer
-	local oldhmmi
-	local oldhmmnc
-	local oldKickFunction
-	if hookfunction then
-		oldKickFunction = hookfunction(LocalPlayer.Kick, function() end)
-	end
-	oldhmmi = hookmetamethod(game, "__index", function(self, method)
-		if self == LocalPlayer and method:lower() == "kick" then
-			return error("Expected ':' not '.' calling member function Kick", 2)
-		end
-		return oldhmmi(self, method)
-	end)
-	oldhmmnc = hookmetamethod(game, "__namecall", function(self, ...)
-		if self == LocalPlayer and getnamecallmethod():lower() == "kick" then
-			return
-		end
-		return oldhmmnc(self, ...)
+addcmd('clientantikick',{'antikick'},function(args, speaker)	
+	if not hookfunction or not hookmetamethod then return notify('Incompatible Exploit','Your exploit does not support this command (missing hookmetamethod)') end
+	local oldName; oldName = hookmetamethod(game, "__namecall", function(self, ...)
+	    local method = getnamecallmethod():lower()
+	    if self == speaker and method == "kick" or method == "destroy" then
+	        return
+	    end
+	
+	    return oldName(self, ...)
 	end)
 	
+	local oldnIndex; oldnIndex = hookmetamethod(game, "__newindex", function(self, key, value)
+	    if self == speaker and key:lower() == "parent" then
+	        return
+	    end
+
+	    return oldnIndex(self, key, value)
+	end)
+	
+	hookfunction(speaker.Kick, newcclosure(function() end))
 	notify('Client Antikick','Client anti kick is now active (only effective on localscript kick)')
 end)
 
 allow_rj = true
-addcmd('clientantiteleport',{'antiteleport'},function(args, speaker)
-	if not hookmetamethod then 
-		return notify('Incompatible Exploit','Your exploit does not support this command (missing hookmetamethod)')
-	end
-	local TeleportService = TeleportService
-	local oldhmmi
-	local oldhmmnc
-	oldhmmi = hookmetamethod(game, "__index", function(self, method)
-		if self == TeleportService then
+addcmd('clientantiteleport',{'antiteleport', 'antitp'},function(args, speaker)
+	if not hookmetamethod then return notify('Incompatible Exploit','Your exploit does not support this command (missing hookmetamethod)') end
+
+	local oldIndex; oldIndex = hookmetamethod(game, "__index", function(self, method)
+		if (allow_rj and not checkcaller()) and self == TeleportService then
 			if method:lower() == "teleport" then
 				return error("Expected ':' not '.' calling member function Kick", 2)
-			elseif method == "TeleportToPlaceInstance" then
+			elseif method:lower() == "teleporttoplaceinstance" then
 				return error("Expected ':' not '.' calling member function TeleportToPlaceInstance", 2)
 			end
 		end
-		return oldhmmi(self, method)
+		
+		return oldIndex(self, method)
 	end)
-	oldhmmnc = hookmetamethod(game, "__namecall", function(self, ...)
-		if self == TeleportService and getnamecallmethod():lower() == "teleport" or getnamecallmethod() == "TeleportToPlaceInstance" then
+
+	local oldName; oldName = hookmetamethod(game, "__namecall", function(self, ...)
+		local method = getnamecallmethod():lower()
+		if (allow_rj and not checkcaller()) and self == TeleportService and method == "teleport" or method == "teleporttoplaceinstance" then
 			return
 		end
-		return oldhmmnc(self, ...)
+
+		return oldName(self, ...)
 	end)
 
 	notify('Client AntiTP','Client anti teleport is now active (only effective on localscript teleport)')
 end)
 
 addcmd('allowrejoin',{'allowrj'},function(args, speaker)
-	if args[1] and args[1] == 'false' then
-		allow_rj = false
-		notify('Client AntiTP','Allow rejoin set to false')
-	else
-		allow_rj = true
-		notify('Client AntiTP','Allow rejoin set to true')
-	end
+	local arg = tostring(args[1]):lower()
+
+	if not args[1] then allow_rj = not allow_rj; return end
+	if arg then allow_rj = (arg == 'true' and true) or (arg == 'false' and false) end
+	notify('Client AntiTP', 'Allow rejoin set to '..tostring(allow_rj))
 end)
 
 addcmd('cancelteleport',{'canceltp'},function(args, speaker)
